@@ -124,11 +124,11 @@ void parseXmlNodePing(xmlNodePtr node, int counter) {
 				if (!strcmp((char*)childNode->name, "node")) {
 					head = (struct pingnode*)parseXmlNodePingChild(childNode, newPingcfg, head);
 				}
-				else if (!strcmp((char*)childNode->name, "refresh")) {
+				else if (!strcmp((char*)childNode->name, "attempt")) {
 					//refresh
 					strcpy(newPingcfg->refresfrate, (char*)xmlNodeGetContent(childNode));
 				}
-				else if (!strcmp((char*)childNode->name, "flushafter")) {
+				else if (!strcmp((char*)childNode->name, "ttl")) {
 					//flushafter
 					strcpy(newPingcfg->flushafter, (char*)xmlNodeGetContent(childNode));
 				}
@@ -177,6 +177,7 @@ struct sqlnode* insertAtSqlBeginning(struct sqlnode* head, char* name, char* key
 	if (newNode != NULL) {
 		newNode->next = head;
 		head = newNode;
+		strcpy(newNode->result,"-1");
 	}
 	newNode->parent = pSqlcfg;
 	return head;
@@ -258,9 +259,20 @@ void parseXmlNodeSQL(xmlNodePtr node, int counter) {
 					//refresh
 					strcpy(newSQLcfg->refresfrate, (char*)xmlNodeGetContent(childNode));
 				}
-				else if (!strcmp((char*)childNode->name, "flushafter")) {
-					//flushafter
-					strcpy(newSQLcfg->flushafter, (char*)xmlNodeGetContent(childNode));
+				else if (!strcmp((char*)childNode->name, "dsn")) {
+					//dsn
+					char* ptr = (char*)xmlNodeGetContent(childNode);
+					char* ptr_= ptr;
+					while (*ptr_ != '\0') {
+						if (*ptr_ == ';') {
+							*ptr_ = ',';
+						}
+						if (*ptr_ == '#') {
+							*ptr_ = '_';
+						}
+						ptr_++;
+					}
+					strcpy(newSQLcfg->flushafter, ptr);
 				}
 				else if (!strcmp((char*)childNode->name, "server")) {
 					//server
@@ -291,6 +303,17 @@ void parseXmlNodeSQL(xmlNodePtr node, int counter) {
 		}
 	}
 	newSQLcfg->arraySqlNode = head;
+	int lenurl = strlen("http://");
+	char* pserver = NULL;
+	lenurl += strlen(newSQLcfg->server);
+	pserver = newSQLcfg->server;
+	lenurl += strlen("/getdata");
+	char* link = (char*)malloc(sizeof(char) * (lenurl + 1));
+	strcpy(link, "http://");
+	strcat(link, pserver);
+	strcat(link, "/getdata");
+	*(link + lenurl) = '\0';
+	newSQLcfg->url = link;
 }
 //--
 void printSQLcfg(int maxcounter) {

@@ -30,15 +30,19 @@ int main()
 		struct threadparam* tparams=(struct threadparam*)malloc(sizeof(struct threadparam));
 		tparams->config = PingCfgArray[p];
 		tparams->ptype = eType::ping;
-		printf("%p %p\n", *PingCfgArray, tparams->config);
+		//printf("%p %p\n", *PingCfgArray, tparams->config);
 		CreateThread(NULL, 0, threadConnection, (LPVOID)tparams, 0, NULL);
 	}
 	//printf("json %p\n", *PingCfgArray);
 	//createMyJSON(PingCfgArray);
 	//disable sql
-	/*for (int p = 0;p < globalSQLServerNumber;p++) {
-		threadConnection(sql, SQLcfgArray[p]);
-	}*/
+	for (int p = 0;p < globalSQLServerNumber;p++) {
+		struct threadparam* tparams = (struct threadparam*)malloc(sizeof(struct threadparam));
+		tparams->config = SQLcfgArray[p];
+		tparams->ptype = eType::sql;
+		//threadConnection(sql, SQLcfgArray[p]);
+		CreateThread(NULL, 0, threadConnection, (LPVOID)tparams, 0, NULL);
+	}
 	runWebServer(8080);
 	
 	return 0;

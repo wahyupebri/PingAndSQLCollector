@@ -38,7 +38,79 @@ char* produceJSON() {
 
     return jsonString;
 }
-char* createMyJSON(strPingCfg** pingcfgarr) {
+char* createMyJSON(strPingCfg** pingcfgarr, strSQLCfg** sqlcfgarr) {
+    //count length
+    int pingresultlen = 0;
+    int sqlresultlen = 0;
+    char* pingjson = NULL;
+    strPingCfg* pPingCfg = *pingcfgarr;
+    char* jsonString = NULL;
+    //WaitForSingleObject(hMutex, INFINITE);
+    if (dataArray == NULL) {
+        //printf("%p %p\n", pPingCfg, pingcfgarr[0]);
+        for (int p = 0;p < globalPingServerNumber;) {
+            strPingNode* head = pingcfgarr[p]->arrayPingNode;
+            //printLinkedListPing(head);
+            while (head != NULL) {
+                if (pingcfgarr[p]->isconnected == 1) {
+                    insertData(head->id, head->result);
+                    //free(head->result); //NEED CHECK!!
+                    //printf("%p %s\n", head, head->ip);
+                }
+                else
+                    insertData(head->id, RESULTNOTCONNECTED);
+
+                head = head->next;
+            }
+            p++;
+        }
+        for (int p = 0;p < globalSQLServerNumber;) {
+            strSQLnode* head = sqlcfgarr[p]->arraySqlNode;
+            //printLinkedListPing(head);
+            while (head != NULL) {
+                if (sqlcfgarr[p]->isconnected == 1) {
+                    insertData(head->id, head->result);
+                    //free(head->result); //NEED CHECK!!
+                    //printf("%p %s\n", head, head->ip);
+                }
+                else
+                    insertData(head->id, RESULTNOTCONNECTED);
+
+                head = head->next;
+            }
+            p++;
+        }
+    }
+    //ReleaseMutex(hMutex);
+        // Produce JSON string
+    jsonString = produceJSON();
+    if (jsonString != NULL) {
+        *(jsonString + strlen(jsonString)) = '\0';
+        //printf("--JSON: %s\n", jsonString);
+    }
+    else {
+        printf("WARNING: No data to produce JSON.\n");
+    }
+
+
+    //free(dataArray);
+
+     //Clean up cJSON array
+    if (dataArray != NULL) {
+        cJSON_Delete(dataArray);
+        dataArray = NULL;
+    }
+
+    /*for (int p = 0;p < globalSQLServerNumber;p++) {
+        strSQLnode* head = sqlcfgarr[p].arraySqlNode;
+        while (head != NULL) {
+            sqlresultlen+=strlen(head->result);
+        }
+    }*/
+
+    return jsonString;
+}
+char* createMyJSON_(strPingCfg** pingcfgarr) {
     //count length
     int pingresultlen = 0;
     int sqlresultlen = 0;
@@ -93,6 +165,47 @@ char* createMyJSON(strPingCfg** pingcfgarr) {
     }*/
 
     return jsonString;
+}
+int parsingSQLResult(char* buffer, strSQLCfg* pcfg) {
+    int pcounter = 0;
+    int lastIPcounter = 0;
+    strSQLnode* head = pcfg->arraySqlNode;
+    //char * newbuffer=(char *)malloc(sizeof(char)*strlen(buffer))
+    if (buffer != NULL) {
+        //WaitForSingleObject(hMutex, INFINITE);
+        while (true) {
+            if (*buffer == ';' || *buffer == '\0') {
+                char* temp = (char*)malloc((pcounter - lastIPcounter + 1) * sizeof(char));
+                char* temp_url = buffer - (pcounter - lastIPcounter);
+                strncpy(temp, temp_url, (pcounter - lastIPcounter + 1));
+                *(temp + (pcounter - lastIPcounter)) = '\0';
+                if (*temp == '1') {
+                    strcpy(head->result,temp);
+                }
+                else if (*temp == '0') {
+                    strcpy(head->result, "-1");
+                }
+                else {
+                    strcpy(head->result,temp);
+                }
+                free(temp);
+                lastIPcounter = pcounter + 1;
+                head = head->next;
+                if (*buffer == '\0') {
+                    break;
+                }
+            }
+            buffer++;
+            pcounter++;
+
+        }
+
+    }
+    else {
+        printf("WARNING: Buffer NULL parsing Result, name %s key %s\n", head->name, head->key);
+    }
+
+    return 0;
 }
 int parsingPingResult(char* buffer, strPingCfg* ppingcfg) {
     int pcounter = 0;
@@ -180,11 +293,15 @@ static int curlGetResult(eType type, void* config) {
             buffCurl = NULL;
             return 0;
         }
-        /* else
-             parsingPingResult(buffCurl, (strPingCfg*)config)*/
+        else{
+        //parsingPingResult(buffCurl, (strPingCfg*)config);
              //free(buffCurl);
-                 /*return 0;
-             }*/
+        parsingSQLResult(buffCurl, (strSQLCfg*)config);
+        printf("INFO: get result SQL %s\n", buffCurl);
+        free(buffCurl);
+        buffCurl = NULL;
+                 return 0;
+             }
     }
     else {
         printf("ERROR: No result from %s\n", link);
@@ -298,7 +415,7 @@ int threadConnection(eType type, void* config) {
             strPingCfg* ppingcfg = (strPingCfg*)config;
             ppingcfg->isconnected = 1;
         }
-        //curlGetResult(type, config);
+        curlGetResult(type, config);
     }
     else{
         if (type == eType::ping) {
@@ -357,6 +474,14 @@ DWORD WINAPI threadConnection(LPVOID lpParam) {
                     }
                     else if (params->ptype == eType::sql) {
                         //FILL here for SQL!!
+                        strSQLCfg* pcfg = (strSQLCfg*)params->config;
+                        for (int p = 0;p < globalSQLServerNumber;p++) {
+                            strSQLnode* head = pcfg->arraySqlNode;
+                            while (head != NULL) {
+                                strcpy(head->result,"-2");
+                                head = head->next;
+                            }
+                        }
                     }
                     
                 }
@@ -414,7 +539,7 @@ static enum MHD_Result ahc_echo(void* cls,
             Sleep(10);
         }
         if (sharedSignal == 0) {
-            myjson = createMyJSON(PingCfgArray);
+            myjson = createMyJSON(PingCfgArray,SQLcfgArray);
             sharedSignal = 1;
         }
         ReleaseMutex(hMutex);

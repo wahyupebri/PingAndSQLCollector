@@ -22,7 +22,7 @@ struct pingconfig {
 	char server[30];
 	char* url;//get data no free memory
 	char refresfrate[3];
-	char flushafter[5];
+	char flushafter[6];
 	char isconnected;
 	//HANDLE mythread;
 	strPingNode* arrayPingNode;//=head
@@ -30,10 +30,10 @@ struct pingconfig {
 typedef struct pingconfig strPingCfg;
 
 struct sqlnode {
-	char name[10];
+	char name[20];
 	char key[20];
 	char isUsed;
-	char* result;
+	char result[5];
 	int id;
 	void* parent;
 	struct sqlnode* next;
@@ -43,8 +43,8 @@ struct sqlconfig {
 	char server[30];
 	char *query;//no free memory
 	char* url;//get data no free memory
-	char refresfrate[3];
-	char flushafter[5];
+	char refresfrate[6];
+	char flushafter[200];
 	char label[10];
 	char isconnected;
 	//HANDLE mythread;
