@@ -34,6 +34,7 @@ struct sqlnode {
 	char key[20];
 	char isUsed;
 	char result[5];
+	char last_delay_oid[15];//add to save last delay_oid
 	int id;
 	void* parent;
 	struct sqlnode* next;
