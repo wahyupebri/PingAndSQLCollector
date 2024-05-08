@@ -179,13 +179,13 @@ int parsingSQLResult(char* buffer, strSQLCfg* pcfg) {
                 char* temp_url = buffer - (pcounter - lastIPcounter);
                 strncpy(temp, temp_url, (pcounter - lastIPcounter + 1));
                 *(temp + (pcounter - lastIPcounter)) = '\0';
-                if (*temp == '1') {
+                if (*temp == '1') { //use STRCMP
                     strcpy(head->result,temp);
                 }
-                else if (*temp == '0') {
+                else if (*temp == '0') { //use STRCMP
                     strcpy(head->result, "-1");
                 }
-                else {
+                else { //add logic to catch delayoid
                     strcpy(head->result,temp);
                 }
                 free(temp);
